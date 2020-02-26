@@ -1,0 +1,144 @@
+#!/bin/bash
+source config.rc
+
+curDate=$(date "+%Y-%m-%d")
+lastDate=$(cat date.lock)
+
+if [ $lastDate = $curDate ] ;
+then
+	sleep 1m
+  exit 0
+fi
+
+url=http://stuinfo.neu.edu.cn
+access_token=''
+id=''
+timestamp=''
+
+loginForm='{
+  "username":"'$username'",
+  "grant_type":"password",
+  "password":"'$password'",
+  "imageCodeResult":"",
+  "imageKey":""
+}'
+
+function getTimestamp() {
+  current=`date "+%Y-%m-%d %H:%M:%S"`  
+  timeStamp=`date -d "$current" +%s`
+  currentTimeStamp=$((timeStamp*1000+`date "+%N"`/1000000)) 
+  timestamp=$currentTimeStamp
+}
+
+function getAccessToken() {
+  local json=$1
+  access_token=${json:17:591}
+}
+
+function getId() {
+  local json=$1
+  id=${json:0-38:36}
+}
+
+curl \
+  $url"/api/auth/oauth/token?username="$username"&grant_type=password&password="$password"&imageCodeResult=&imageKey=" \
+  -X POST \
+  -H 'Authorization: Basic dnVlOnZ1ZQ==' \
+  -d "$loginForm" \
+  -s \
+	-c cookie.txt \
+  > login.json
+
+getAccessToken "$(cat login.json)"
+getId "$(cat login.json)"
+getTimestamp
+
+cookie='Cookie: accessToken='$access_token'; userName='$username
+authorization='Authorization: Bearer '$access_token
+_t=`date +%s`
+
+curl -s \
+  $url"/cloud-xxbl/studenLogin" \
+  -X POST \
+  -H "$cookie" \
+	-H "$authorization" \
+	-d '{"_t":'$_t'}' \
+	> tag.json
+
+tag=`cat tag.json`
+tag=${tag:0-45:43}
+
+curl -s \
+  $url"/cloud-xxbl/studentinfo?tag="$tag \
+  -X GET \
+  -H "$cookie" \
+	-c cookie.txt \
+	> /dev/null
+
+JSESSIONID=`cat cookie.txt`
+JSESSIONID=${JSESSIONID:0-32:32}
+cookie='Cookie: JSESSIONID='$JSESSIONID'; accessToken='$access_token'; userName='$username
+
+curl -s \
+  $url"/cloud-xxbl/getStudentInfo" \
+  -X GET \
+  -H "$cookie" \
+	> form.json
+
+id=`cat form.json| grep -Eo "id.*mqzk"`
+id=${id:5:36}
+
+infoForm='{
+	"xm": "'$name'",
+	"xh": "'$username'",
+	"xy": "'$college'",
+	"njjzy": "2016 级软件工程",
+	"bj": "'$class'",
+	"brsjhm": "'$phone'",
+	"sylx": "内地学生",
+	"jtxxdz_sf": "江苏",
+	"jtxxdz_cs": "南通",
+	"jtxxdz_qx": "崇川区",
+	"jtxxdz": "平东镇",
+	"mqxxdz_sf": "江苏",
+	"mqxxdz_cs": "南通",
+	"mqxxdz_qx": "崇川区",
+	"mqxxdz": "平东镇",
+	"jzsjhm": "'$phone'",
+	"mqzk": "A",
+	"zjtw": "",
+	"zzkssj": "",
+	"sfjy": "",
+	"sfyqjc": "",
+	"mqsfzj": "",
+	"jtms": "",
+	"glyyms": "",
+	"gldxxdz_sf": "",
+	"gldxxdz": "",
+	"mqstzk": "",
+	"sfgcyiqz": "否",
+	"cjlqk": "曾经医学观察，后隔离解除",
+	"dsjtqkms": "",
+	"sfbrtb": "是",
+	"fdysfty": "否",
+	"tbrxm": "",
+	"tbrxh": "",
+	"tbrxy": "",
+	"dtyy": "",
+	"id": "'$id'",
+	"tbsj": "'$(date "+%Y-%m-%d %H:%M:%S".0)'",
+	"xgrq":"'$(date "+%Y-%m-%d")'"
+}'
+
+curl \
+  $url"/cloud-xxbl/updateStudentInfo?t="$timestamp \
+  -X POST \
+  -H 'Content-Type: application/json;charset=UTF-8' \
+  -H "$cookie" \
+  -d "${infoForm}" \
+	> update.log
+
+echo $curDate > date.lock
+notify-send 'NEU疫情问卷' '今日的疫情问卷已经填写完毕！' --icon=dialog-information
+
+echo $infoForm

@@ -1,0 +1,9 @@
+#!/bin/bash
+#config your info
+
+username=
+password=
+name=
+college=
+class=
+phone=

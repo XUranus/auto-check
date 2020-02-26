@@ -1,0 +1,21 @@
+#!/bin/bash
+
+echo 'create directory /usr/share/sbneub'
+sudo mkdir /usr/share/sbneub
+
+echo 'create /usr/lib/systemed/system/sbneub.service'
+sudo cp sbneub.service /usr/lib/systemd/system
+
+echo 'copy scripts to /usr/share/sbneub'
+
+sudo cp submit /usr/share/sbneub/submit
+sudo cp config.rc /usr/share/sbneub/config.rc 
+
+sudo touch /usr/share/sbneub/date.lock
+sudo date "+%Y-%m-%d" > /usr/share/sbneub/date.lock
+
+sudo chmod +x /usr/share/sbneub/submit
+
+sudo systemctl daemon-reload
+echo 'Done.'
+echo 'now config in /usr/share/sbneub/config.rc'

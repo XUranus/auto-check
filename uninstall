@@ -1,0 +1,10 @@
+#!/bin/bash
+echo 'uninstalling...'
+sudo rm -rf /usr/share/sbneub
+echo 'stoping...'
+sudo systemctl stop sbneub
+echo 'disabling....'
+sudo systemctl disable sbneub
+echo 'removing service...'
+sudo rm -rf /usr/lib/systemd/system/sbneub.service
+echo 'Done.'
